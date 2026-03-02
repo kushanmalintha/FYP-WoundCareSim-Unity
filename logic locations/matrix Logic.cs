@@ -1,8 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Networking;
-using System;
 
 //steps in order
 /*
@@ -29,7 +27,6 @@ public class MatrixLogic : MonoBehaviour
     public Transform dressigSolution;
     public Transform sterilizePacket;
 
-    public RequestHandler requestHandler;
     public QuestionManager QuestionManager;
 
     //initializing
@@ -49,7 +46,6 @@ public class MatrixLogic : MonoBehaviour
     public int step4 = 3;
     public int step5 = 4;
     public int step6 = 5;
-    public string APIEndPointURL = "/evaluate/step";
 
     void Update()
     {
@@ -132,31 +128,11 @@ public class MatrixLogic : MonoBehaviour
         // If changed or 2 minutes passed without changes
         if (hasChanged || Time.time - lastChangeTime >= maxTimeWithoutChange)
         {
-            APIEndPoint(userMatrixBool);
+            // Backend call removed - log the matrix state instead
+            Debug.Log("Action triggered: matrix state changed - " + string.Join(", ", userMatrixBool));
             previousMatrixState = new List<bool>(userMatrixBool);
             lastChangeTime = Time.time;
         }
-    }
-
-    void APIEndPoint(List<bool> userMatrixBool)
-    {
-        bool[] matrixArray = userMatrixBool.ToArray();
-        Debug.Log("Sending API: " + string.Join(", ", userMatrixBool));
-
-        MatrixData matrixData = new MatrixData(userMatrixBool);
-        string jsonString = JsonUtility.ToJson(matrixData);
-        requestHandler.SendApiRequest(APIEndPointURL, jsonString);
-    }
-}
-
-[System.Serializable]
-public class MatrixData
-{
-    public List<bool> matrix;
-
-    public MatrixData(List<bool> matrix)
-    {
-        this.matrix = matrix;
     }
 }
 
@@ -202,13 +178,11 @@ public class SanitizerChecker
                 matrixLogic.userMatrixBool[matrixLogic.step6] == true))
             {
                 matrixLogic.userMatrixBool[matrixLogic.step3] = true;
-                //Debug.Log("sanatizer step3: ");
                 Debug.Log("sanatizer User Matrix: " + string.Join(", ", matrixLogic.userMatrixBool));
             }
             else
             {
                 matrixLogic.userMatrixBool[matrixLogic.step1] = true;
-                //Debug.Log("sanatizer step1: ");
                 Debug.Log("sanatizer User Matrix: " + string.Join(", ", matrixLogic.userMatrixBool));
             }
         }

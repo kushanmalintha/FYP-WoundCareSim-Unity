@@ -6,13 +6,16 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Networking;
 
+/// <summary>
+/// QuestionManager — networking reset.
+/// Backend MCQ submission removed. Local question loading and UI rendering kept intact.
+/// </summary>
 public class QuestionManager : MonoBehaviour
 {
     public TMP_Text questionText;
     public ToggleGroup toggleGroup;
     public List<Toggle> answerToggles;
     public AudioSource audioSource;
-    [SerializeField] private WebSocketHandler webSocketHandler;
 
     private List<MCQQuestion> questions;
 
@@ -116,19 +119,25 @@ public class QuestionManager : MonoBehaviour
             Debug.Log("❌ Wrong Answer!");
         }
 
-        webSocketHandler.SendSampleMCQData(currentQuestionIndex + 1, answerToggles[selectedIndex].GetComponentInChildren<Text>().text);
+        // Backend call removed - MCQ answer not sent to backend
+        Debug.Log("Backend call removed - placeholder (QuestionManager.SubmitAnswer)");
+
         submitButton.interactable = false;
-        submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Please wait for the response...";
+        submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Please wait...";
 
         currentQuestionIndex++;
         if (currentQuestionIndex >= questions.Count)
         {
             Debug.Log("Quiz Finished!");
             isActivateStepsLogic = true;
+            submitButton.interactable = true;
+            submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Submit";
             return;
         }
 
         DisplayQuestion(currentQuestionIndex);
+        submitButton.interactable = true;
+        submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Submit";
     }
 
     public void PlayClickSound()

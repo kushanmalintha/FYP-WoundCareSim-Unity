@@ -13,21 +13,34 @@ public class meshcontrol : MonoBehaviour
 
         if (meshFilter == null)
         {
-            Debug.LogError("No MeshFilter found on this GameObject.");
+            Debug.LogWarning("meshcontrol: No MeshFilter found on this GameObject. Skipping mesh modification.");
             return;
         }
 
         if (medicine2 == null)
         {
-            Debug.LogError("Medicine2 mesh not assigned.");
+            Debug.LogWarning("meshcontrol: Medicine2 mesh not assigned in Inspector. Skipping mesh modification.");
+            return;
+        }
+
+        if (!medicine2.isReadable)
+        {
+            Debug.LogWarning("meshcontrol: Mesh is not readable (Read/Write not enabled in import settings). Skipping mesh modification.");
             return;
         }
 
         // Assign medicine2 mesh as a new instance to modify
         meshInstance = Instantiate(medicine2);
+
+        if (meshInstance == null || !meshInstance.isReadable)
+        {
+            Debug.LogWarning("meshcontrol: Instanced mesh is not readable. Skipping vertex modification.");
+            return;
+        }
+
         meshFilter.mesh = meshInstance;
 
-        // Example modification: move vertices up by 0.1f
+        // Example modification: nudge vertices up by 0.01f
         Vector3[] vertices = meshInstance.vertices;
         for (int i = 0; i < vertices.Length; i++)
         {
