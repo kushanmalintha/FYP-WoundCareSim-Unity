@@ -11,14 +11,17 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+[Serializable]
 public class SessionResponse
 {
     public string session_id;
     public string session_token;
 }
 
-public class SimpleSessionStarter : MonoBehaviour
+public class BackendConnectionManager : MonoBehaviour
 {
+    public static BackendConnectionManager Instance;
+
     private const string studentId = "student_001";
     private const string scenarioId = "scenario_001";
     private const string baseUrl = "http://192.168.8.153:8000/session";
@@ -28,6 +31,19 @@ public class SimpleSessionStarter : MonoBehaviour
     private CancellationTokenSource cancellationToken;
     private string currentSessionId;
     private string currentSessionToken;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     private void Start()
     {
@@ -125,11 +141,7 @@ public class SimpleSessionStarter : MonoBehaviour
             Debug.Log($"Connecting to WebSocket: {fullWsUrl}");
 
             await webSocket.ConnectAsync(new Uri(fullWsUrl), cancellationToken.Token);
-            Debug.Log("WebSocket connected successfully");
-
-            // Wait a bit before sending the test event
-            await Task.Delay(500);
-            await SendEvent("text_message", "Hello patient");
+            Debug.Log("Backend connection ready.");
 
             _ = ReceiveLoop();
         }
@@ -139,7 +151,7 @@ public class SimpleSessionStarter : MonoBehaviour
         }
     }
 
-    private async Task SendEvent(string eventName, string text)
+    public async Task SendEvent(string eventName, JObject data)
     {
         if (webSocket == null || webSocket.State != WebSocketState.Open)
         {
@@ -147,19 +159,22 @@ public class SimpleSessionStarter : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Sending {eventName} event...");
+        JObject payload = new JObject
+        {
+            ["type"] = "event",
+            ["event"] = eventName,
+            ["data"] = data
+        };
 
-        // Exact JSON structure required by backend
-        string json = "{" +
-                      "\"type\": \"event\"," +
-                      "\"event\": \"" + eventName + "\"," +
-                      "\"data\": {" +
-                      "\"text\": \"" + text + "\"" +
-                      "}" +
-                      "}";
-
+        string json = JsonConvert.SerializeObject(payload);
         byte[] bytes = Encoding.UTF8.GetBytes(json);
-        await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken.Token);
+        
+        await webSocket.SendAsync(
+            new ArraySegment<byte>(bytes), 
+            WebSocketMessageType.Text, 
+            true, 
+            cancellationToken.Token
+        );
     }
 
     private async Task ReceiveLoop()
