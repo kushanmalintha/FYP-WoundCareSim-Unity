@@ -190,7 +190,11 @@ public class SimpleSessionStarter : MonoBehaviour
                     string message = Encoding.UTF8.GetString(ms.ToArray());
 
                     Debug.Log("Full WS message received, length: " + message.Length);
-                    HandleMessage(message);
+                    
+                    MainThreadDispatcher.Enqueue(() =>
+                    {
+                        BackendEventRouter.Route(message);
+                    });
                 }
             }
         }
@@ -200,56 +204,6 @@ public class SimpleSessionStarter : MonoBehaviour
             {
                 Debug.LogError($"WebSocket receive error: {e.Message}");
             }
-        }
-    }
-
-    private void HandleMessage(string message)
-    {
-        try
-        {
-            JObject obj = JObject.Parse(message);
-            string type = obj["type"]?.ToString();
-            string eventName = obj["event"]?.ToString();
-
-            if (type == "server_event")
-            {
-                switch (eventName)
-                {
-                    case "nurse_message":
-                        Debug.Log("Nurse message received");
-                        Debug.Log(obj["data"]?.ToString());
-                        break;
-
-                    case "tts_audio":
-                        Debug.Log("TTS audio received");
-                        string data = obj["data"]?.ToString();
-                        if (!string.IsNullOrEmpty(data))
-                        {
-                            Debug.Log($"TTS Audio Data Length: {data.Length}");
-                        }
-                        break;
-
-                    case "transcription_result":
-                        Debug.Log("Transcription received");
-                        break;
-
-                    default:
-                        Debug.Log("Event: " + eventName);
-                        break;
-                }
-            }
-            else if (type == "error")
-            {
-                Debug.LogError("Backend error: " + obj["data"]?.ToString());
-            }
-            else
-            {
-                Debug.Log("Received WS message type: " + type);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Failed to parse WS message: {e.Message}. Raw length: {message.Length}");
         }
     }
 }
