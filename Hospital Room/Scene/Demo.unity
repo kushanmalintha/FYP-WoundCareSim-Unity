@@ -2009,6 +2009,50 @@ MonoBehaviour:
   _movementProvider: {fileID: 0}
   _handAligment: 0
   _handGrabPoses: []
+--- !u!1 &302868450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 302868452}
+  - component: {fileID: 302868451}
+  m_Layer: 0
+  m_Name: Test
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &302868451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 302868450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0fcd6102b6ca414da54d01583afa883, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &302868452
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 302868450}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.6549182, y: 0.3874504, z: -1.0884352}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &309543383
 GameObject:
   m_ObjectHideFlags: 0
@@ -4386,7 +4430,6 @@ MonoBehaviour:
   - {fileID: 1733082789}
   - {fileID: 381725871}
   audioSource: {fileID: 577919874}
-  webSocketHandler: {fileID: 1481419878}
   submitButton: {fileID: 820866866}
   isActivateStepsLogic: 0
 --- !u!82 &577919874
@@ -6181,22 +6224,13 @@ MonoBehaviour:
   rectangleObject: {fileID: 376832685}
   dressigSolution: {fileID: 1434437576}
   sterilizePacket: {fileID: 369402889}
-  requestHandler: {fileID: 1526528884}
   QuestionManager: {fileID: 577919873}
-  trolleyChecker:
-    minX: -1
-    maxX: 1
-    minY: -0.5
-    maxY: 0.5
-    minZ: -1
-    maxZ: 1
   step1: 0
   step2: 1
   step3: 2
   step4: 3
   step5: 4
   step6: 5
-  APIEndPointURL: /evaluate/step
 --- !u!1 &724697705
 GameObject:
   m_ObjectHideFlags: 0
@@ -6320,11 +6354,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   audioSource: {fileID: 0}
-  responseTimeThreshold: 5000
   blobChannels: 1
   blobSampleRate: 48000
-  blobIsFloat: 0
-  autoDetectFormat: 1
   submitButton: {fileID: 820866866}
 --- !u!4 &727132002
 Transform:
@@ -7964,7 +7995,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   conversationHandler: {fileID: 727132001}
-  webSocketHandler: {fileID: 1481419878}
 --- !u!4 &898184580
 Transform:
   m_ObjectHideFlags: 0
@@ -8156,7 +8186,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   conversationHandler: {fileID: 727132001}
-  webSocketHandler: {fileID: 1481419878}
 --- !u!4 &912604846
 Transform:
   m_ObjectHideFlags: 0
@@ -12449,8 +12478,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 488df0002fe6e7041b1034f703b1041a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseUrl: wss://backend-dry-shape-4926.fly.dev
-  conversationHandler: {fileID: 727132001}
 --- !u!4 &1481419879
 Transform:
   m_ObjectHideFlags: 0
@@ -12501,9 +12528,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83aed954b3535414c989b68f4120bd42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  conversationHandler: {fileID: 727132001}
-  resultsPanel: {fileID: 1371754505}
-  loadingSpinner: {fileID: 910932806}
 --- !u!4 &1526528885
 Transform:
   m_ObjectHideFlags: 0
@@ -14408,8 +14432,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d0ed0091fcddac42b6588c01ad2e4a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  requestHandler: {fileID: 1526528884}
-  webSocketHandler: {fileID: 1481419878}
 --- !u!4 &1735285710
 Transform:
   m_ObjectHideFlags: 0
@@ -16906,7 +16928,6 @@ MonoBehaviour:
   loadingSpinner: {fileID: 910932806}
   resultsPanel: {fileID: 1371754505}
   textMarks: {fileID: 1781473545}
-  requestHandler: {fileID: 1526528884}
 --- !u!4 &2088102359
 Transform:
   m_ObjectHideFlags: 0
@@ -21515,3 +21536,4 @@ SceneRoots:
   - {fileID: 898184580}
   - {fileID: 912604846}
   - {fileID: 1643703484}
+  - {fileID: 302868452}
