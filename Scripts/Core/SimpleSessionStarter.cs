@@ -124,12 +124,39 @@ public class SimpleSessionStarter : MonoBehaviour
             await webSocket.ConnectAsync(new Uri(fullWsUrl), cancellationToken.Token);
             Debug.Log("WebSocket connected successfully");
 
+            // Wait a bit before sending the test event
+            await Task.Delay(500);
+            await SendEvent("text_message", "Hello patient");
+
             _ = ReceiveLoop();
         }
         catch (Exception e)
         {
             Debug.LogError($"WebSocket connection error: {e.Message}");
         }
+    }
+
+    private async Task SendEvent(string eventName, string text)
+    {
+        if (webSocket == null || webSocket.State != WebSocketState.Open)
+        {
+            Debug.LogError("Cannot send event: WebSocket is not open.");
+            return;
+        }
+
+        Debug.Log($"Sending {eventName} event...");
+
+        // Exact JSON structure required by backend
+        string json = "{" +
+                      "\"type\": \"event\"," +
+                      "\"event\": \"" + eventName + "\"," +
+                      "\"data\": {" +
+                      "\"text\": \"" + text + "\"" +
+                      "}" +
+                      "}";
+
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+        await webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken.Token);
     }
 
     private async Task ReceiveLoop()
