@@ -142,6 +142,7 @@ public class BackendConnectionManager : MonoBehaviour
 
             await webSocket.ConnectAsync(new Uri(fullWsUrl), cancellationToken.Token);
             Debug.Log("Backend connection ready.");
+            StepFlowController.Instance.SetInitialStep();
 
             _ = ReceiveLoop();
         }
