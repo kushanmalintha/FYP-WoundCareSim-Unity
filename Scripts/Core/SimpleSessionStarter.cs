@@ -1,13 +1,16 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
-[Serializable]
 public class SessionResponse
 {
     public string session_id;
@@ -161,22 +164,33 @@ public class SimpleSessionStarter : MonoBehaviour
 
     private async Task ReceiveLoop()
     {
-        byte[] buffer = new byte[4096];
+        byte[] buffer = new byte[8192];
 
         try
         {
             while (webSocket.State == WebSocketState.Open && !cancellationToken.Token.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
+                using (var ms = new MemoryStream())
+                {
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
+                        ms.Write(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
 
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, cancellationToken.Token);
-                }
-                else
-                {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Debug.Log("Received WS message: " + message);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        Debug.Log("WebSocket closed by server");
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, cancellationToken.Token);
+                        break;
+                    }
+
+                    ms.Seek(0, SeekOrigin.Begin);
+                    string message = Encoding.UTF8.GetString(ms.ToArray());
+
+                    Debug.Log("Full WS message received, length: " + message.Length);
+                    HandleMessage(message);
                 }
             }
         }
@@ -186,6 +200,56 @@ public class SimpleSessionStarter : MonoBehaviour
             {
                 Debug.LogError($"WebSocket receive error: {e.Message}");
             }
+        }
+    }
+
+    private void HandleMessage(string message)
+    {
+        try
+        {
+            JObject obj = JObject.Parse(message);
+            string type = obj["type"]?.ToString();
+            string eventName = obj["event"]?.ToString();
+
+            if (type == "server_event")
+            {
+                switch (eventName)
+                {
+                    case "nurse_message":
+                        Debug.Log("Nurse message received");
+                        Debug.Log(obj["data"]?.ToString());
+                        break;
+
+                    case "tts_audio":
+                        Debug.Log("TTS audio received");
+                        string data = obj["data"]?.ToString();
+                        if (!string.IsNullOrEmpty(data))
+                        {
+                            Debug.Log($"TTS Audio Data Length: {data.Length}");
+                        }
+                        break;
+
+                    case "transcription_result":
+                        Debug.Log("Transcription received");
+                        break;
+
+                    default:
+                        Debug.Log("Event: " + eventName);
+                        break;
+                }
+            }
+            else if (type == "error")
+            {
+                Debug.LogError("Backend error: " + obj["data"]?.ToString());
+            }
+            else
+            {
+                Debug.Log("Received WS message type: " + type);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Failed to parse WS message: {e.Message}. Raw length: {message.Length}");
         }
     }
 }
