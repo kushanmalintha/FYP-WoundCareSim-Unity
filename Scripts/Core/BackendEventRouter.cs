@@ -45,8 +45,17 @@ public static class BackendEventRouter
                 break;
 
             case "tts_audio":
-                Debug.Log("TTS Audio Received");
-                Debug.Log("Audio size: " + data?["audio_bytes"]?.ToString().Length);
+                if (data != null && data["audio_bytes"] != null)
+                {
+                    if (TTSAudioManager.Instance != null)
+                    {
+                        TTSAudioManager.Instance.PlayTTS(data["audio_bytes"].ToString());
+                    }
+                    else
+                    {
+                        Debug.LogError("[BackendEventRouter] TTSAudioManager instance is null!");
+                    }
+                }
                 break;
 
             case "transcription_result":
