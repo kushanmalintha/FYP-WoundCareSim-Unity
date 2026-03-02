@@ -33,8 +33,15 @@ public static class BackendEventRouter
         switch (eventName)
         {
             case "nurse_message":
-                Debug.Log("Nurse Message Received");
-                Debug.Log("Text: " + data?["text"]);
+                if (data != null)
+                {
+                    string text = data["text"]?.ToString();
+                    string role = data["role"]?.ToString();
+                    if (HistoryStepController.Instance != null)
+                    {
+                        HistoryStepController.Instance.HandleNurseMessage(text, role);
+                    }
+                }
                 break;
 
             case "tts_audio":
