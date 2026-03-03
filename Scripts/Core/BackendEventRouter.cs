@@ -86,8 +86,12 @@ public static class BackendEventRouter
                 break;
 
             case "final_feedback":
-                Debug.Log("Final Feedback Received");
-                Debug.Log(data?.ToString());
+                if (data != null)
+                {
+                    Debug.Log("FINAL FEEDBACK RECEIVED");
+                    Debug.Log(data["narrated_feedback"]?["message_text"]?.ToString());
+                    Debug.Log("Score: " + data["score"]?.ToString());
+                }
                 break;
 
             case "assessment_summary":
@@ -101,8 +105,11 @@ public static class BackendEventRouter
                 break;
 
             case "step_complete":
-                Debug.Log("Step Complete Event Received");
-                Debug.Log("Next Step: " + data?["next_step"]);
+                if (data != null && data["next_step"] != null)
+                {
+                    StepFlowController.Instance.AdvanceTo(data["next_step"].ToString());
+                    Debug.Log("Advanced to next step.");
+                }
                 break;
 
             case "session_end":

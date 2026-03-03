@@ -35,6 +35,24 @@ public class HistoryStepController : MonoBehaviour
                     JObject.FromObject(new { text = "Nurse, can you guide me on what to ask next?" })
                 );
             }
+
+            if (OVRInput.GetDown(OVRInput.Button.Two)) // B button
+            {
+                BackendConnectionManager.Instance.SendEvent(
+                    "step_complete",
+                    JObject.FromObject(new { step = "history" })
+                );
+                Debug.Log("History step completion requested.");
+            }
+
+            if (OVRInput.GetDown(OVRInput.Button.Four)) // Y button
+            {
+                BackendConnectionManager.Instance.SendEvent(
+                    "confirm_step_transition",
+                    new JObject()
+                );
+                Debug.Log("Confirming transition to next step.");
+            }
         }
     }
 
