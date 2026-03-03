@@ -61,7 +61,27 @@ public static class BackendEventRouter
             case "transcription_result":
                 if (data != null && data["is_final"]?.Value<bool>() == true)
                 {
-                    Debug.Log("TRANSCRIPT: " + data["text"]);
+                    string transcript = data["text"]?.ToString();
+                    Debug.Log("TRANSCRIPT: " + transcript);
+
+                    if (PushToTalkController.Instance != null)
+                    {
+                        if (PushToTalkController.Instance.CurrentTarget == VoiceTarget.Patient)
+                        {
+                            BackendConnectionManager.Instance.SendEvent(
+                                "text_message",
+                                JObject.FromObject(new { text = transcript })
+                            );
+                        }
+                        else if (PushToTalkController.Instance.CurrentTarget == VoiceTarget.Nurse)
+                        {
+                            BackendConnectionManager.Instance.SendEvent(
+                                "nurse_message",
+                                JObject.FromObject(new { text = transcript })
+                            );
+                        }
+                        PushToTalkController.Instance.ResetTarget();
+                    }
                 }
                 break;
 

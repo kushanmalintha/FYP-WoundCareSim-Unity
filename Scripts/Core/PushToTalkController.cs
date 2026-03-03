@@ -2,9 +2,18 @@ using System;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
 
+public enum VoiceTarget
+{
+    None,
+    Patient,
+    Nurse
+}
+
 public class PushToTalkController : MonoBehaviour
 {
     public static PushToTalkController Instance { get; private set; }
+
+    public VoiceTarget CurrentTarget { get; private set; } = VoiceTarget.None;
 
     private string _deviceName;
     private AudioClip _recording;
@@ -41,12 +50,19 @@ public class PushToTalkController : MonoBehaviour
     {
         if (string.IsNullOrEmpty(_deviceName)) return;
 
-        // Button One (A) for Push-To-Talk
+        // Button One (A) for Patient Push-To-Talk
         if (OVRInput.GetDown(OVRInput.Button.One))
         {
+            CurrentTarget = VoiceTarget.Patient;
             StartRecording();
         }
-        else if (OVRInput.GetUp(OVRInput.Button.One))
+        // Button Three (X) for Nurse Push-To-Talk
+        else if (OVRInput.GetDown(OVRInput.Button.Three))
+        {
+            CurrentTarget = VoiceTarget.Nurse;
+            StartRecording();
+        }
+        else if (OVRInput.GetUp(OVRInput.Button.One) || OVRInput.GetUp(OVRInput.Button.Three))
         {
             StopRecording();
         }
@@ -119,5 +135,10 @@ public class PushToTalkController : MonoBehaviour
         }));
 
         Debug.Log("[PushToTalkController] Stopped Recording");
+    }
+
+    public void ResetTarget()
+    {
+        CurrentTarget = VoiceTarget.None;
     }
 }
