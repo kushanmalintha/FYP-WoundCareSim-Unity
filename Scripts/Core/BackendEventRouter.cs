@@ -59,8 +59,10 @@ public static class BackendEventRouter
                 break;
 
             case "transcription_result":
-                Debug.Log("Transcription Received");
-                Debug.Log("Text: " + data?["text"]);
+                if (data != null && data["is_final"]?.Value<bool>() == true)
+                {
+                    Debug.Log("TRANSCRIPT: " + data["text"]);
+                }
                 break;
 
             case "final_feedback":

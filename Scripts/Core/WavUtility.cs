@@ -30,4 +30,32 @@ public static class WavUtility
         clip.SetData(audioData, 0);
         return clip;
     }
+    public static byte[] GetWavBytes(float[] samples, int sampleRate, int channels)
+    {
+        using (var stream = new System.IO.MemoryStream())
+        {
+            using (var writer = new System.IO.BinaryWriter(stream))
+            {
+                writer.Write(new char[4] { 'R', 'I', 'F', 'F' });
+                writer.Write(36 + samples.Length * 2);
+                writer.Write(new char[4] { 'W', 'A', 'V', 'E' });
+                writer.Write(new char[4] { 'f', 'm', 't', ' ' });
+                writer.Write(16);
+                writer.Write((short)1); // PCM
+                writer.Write((short)channels);
+                writer.Write(sampleRate);
+                writer.Write(sampleRate * channels * 2);
+                writer.Write((short)(channels * 2));
+                writer.Write((short)16);
+                writer.Write(new char[4] { 'd', 'a', 't', 'a' });
+                writer.Write(samples.Length * 2);
+
+                for (int i = 0; i < samples.Length; i++)
+                {
+                    writer.Write((short)(samples[i] * 32767f));
+                }
+            }
+            return stream.ToArray();
+        }
+    }
 }
