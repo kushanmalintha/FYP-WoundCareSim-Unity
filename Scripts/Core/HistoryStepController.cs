@@ -20,11 +20,19 @@ public class HistoryStepController : MonoBehaviour
     {
         if (StepFlowController.Instance != null && StepFlowController.Instance.CurrentStep == Step.History)
         {
-            if (Keyboard.current != null && Keyboard.current.hKey.wasPressedThisFrame)
+            if (OVRInput.GetDown(OVRInput.Button.One)) // A button
             {
                 BackendConnectionManager.Instance.SendEvent(
                     "text_message",
                     JObject.FromObject(new { text = "Hello, I am the student nurse." })
+                );
+            }
+
+            if (OVRInput.GetDown(OVRInput.Button.Three)) // X button
+            {
+                BackendConnectionManager.Instance.SendEvent(
+                    "nurse_message",
+                    JObject.FromObject(new { text = "Nurse, can you guide me on what to ask next?" })
                 );
             }
         }
