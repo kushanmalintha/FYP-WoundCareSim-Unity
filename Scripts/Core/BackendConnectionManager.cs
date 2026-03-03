@@ -222,4 +222,62 @@ public class BackendConnectionManager : MonoBehaviour
             }
         }
     }
+    public IEnumerator CompleteStep(string stepName)
+    {
+        Debug.Log("Sending step completion request for: " + stepName + "...");
+
+        string url = baseUrl + "/complete-step";
+        
+        JObject body = new JObject
+        {
+            ["session_id"] = currentSessionId,
+            ["step"] = stepName
+        };
+        string jsonBody = body.ToString();
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+
+        UnityWebRequest request = new UnityWebRequest(url, "POST");
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            string responseText = request.downloadHandler.text;
+            Debug.Log("Step completion successful: " + responseText);
+
+            try
+            {
+                JObject response = JObject.Parse(responseText);
+
+                // Play feedback audio if present
+                if (response["feedback_audio"] != null && 
+                    response["feedback_audio"]["audio_base64"] != null)
+                {
+                    string base64Audio = response["feedback_audio"]["audio_base64"].ToString();
+                    if (TTSAudioManager.Instance != null)
+                    {
+                        TTSAudioManager.Instance.PlayTTS(base64Audio);
+                    }
+                }
+
+                if (response["next_step"] != null)
+                {
+                    string nextStep = response["next_step"].ToString();
+                    StepFlowController.Instance.AdvanceTo(nextStep);
+                    Debug.Log("Advanced to next step: " + nextStep);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to parse completion response: " + e.Message);
+            }
+        }
+        else
+        {
+            Debug.LogError("Step completion failed: " + request.error + " - " + request.downloadHandler.text);
+        }
+    }
 }

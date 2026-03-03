@@ -20,38 +20,9 @@ public class HistoryStepController : MonoBehaviour
     {
         if (StepFlowController.Instance != null && StepFlowController.Instance.CurrentStep == Step.History)
         {
-            if (OVRInput.GetDown(OVRInput.Button.One)) // A button
-            {
-                BackendConnectionManager.Instance.SendEvent(
-                    "text_message",
-                    JObject.FromObject(new { text = "Hello, I am the student nurse." })
-                );
-            }
-
-            if (OVRInput.GetDown(OVRInput.Button.Three)) // X button
-            {
-                BackendConnectionManager.Instance.SendEvent(
-                    "nurse_message",
-                    JObject.FromObject(new { text = "Nurse, can you guide me on what to ask next?" })
-                );
-            }
-
             if (OVRInput.GetDown(OVRInput.Button.Two)) // B button
             {
-                BackendConnectionManager.Instance.SendEvent(
-                    "step_complete",
-                    JObject.FromObject(new { step = "history" })
-                );
-                Debug.Log("History step completion requested.");
-            }
-
-            if (OVRInput.GetDown(OVRInput.Button.Four)) // Y button
-            {
-                BackendConnectionManager.Instance.SendEvent(
-                    "confirm_step_transition",
-                    new JObject()
-                );
-                Debug.Log("Confirming transition to next step.");
+                StartCoroutine(BackendConnectionManager.Instance.CompleteStep("history"));
             }
         }
     }
