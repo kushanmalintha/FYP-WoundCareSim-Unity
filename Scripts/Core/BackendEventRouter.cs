@@ -97,11 +97,29 @@ public static class BackendEventRouter
             case "assessment_summary":
                 Debug.Log("Assessment Summary Received");
                 Debug.Log(data?.ToString());
+                if (QuestionManager.Instance != null)
+                {
+                    QuestionManager.Instance.HandleAssessmentSummary(data);
+                }
                 break;
 
             case "mcq_answer_result":
                 Debug.Log("MCQ Answer Result Received");
                 Debug.Log(data?.ToString());
+
+                // Play feedback audio if present
+                if (data != null && data["feedback_audio"] != null && data["feedback_audio"]["audio_base64"] != null)
+                {
+                    if (TTSAudioManager.Instance != null)
+                    {
+                        TTSAudioManager.Instance.PlayTTS(data["feedback_audio"]["audio_base64"].ToString());
+                    }
+                }
+
+                if (QuestionManager.Instance != null)
+                {
+                    QuestionManager.Instance.HandleAnswerResult(data);
+                }
                 break;
 
             case "step_complete":

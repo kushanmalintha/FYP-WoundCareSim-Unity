@@ -29,8 +29,12 @@ public class BackendConnectionManager : MonoBehaviour
 
     private ClientWebSocket webSocket;
     private CancellationTokenSource cancellationToken;
+
     private string currentSessionId;
     private string currentSessionToken;
+
+    // ✅ NEW: Store scenario metadata
+    public JObject SessionMetadata { get; private set; }
 
     private void Awake()
     {
@@ -59,25 +63,26 @@ public class BackendConnectionManager : MonoBehaviour
         }
     }
 
+    // ---------------------------------------------------------
+    // SESSION START
+    // ---------------------------------------------------------
+
     private IEnumerator SendSessionStartRequest()
     {
         Debug.Log("Sending session start request...");
 
         string url = baseUrl + "/start";
-        // Create the JSON body
+
         string jsonBody = "{\"scenario_id\": \"" + scenarioId + "\", \"student_id\": \"" + studentId + "\"}";
         byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
 
-        // Create the request
         UnityWebRequest request = new UnityWebRequest(url, "POST");
         request.uploadHandler = new UploadHandlerRaw(bodyRaw);
         request.downloadHandler = new DownloadHandlerBuffer();
         request.SetRequestHeader("Content-Type", "application/json");
 
-        // Send the request
         yield return request.SendWebRequest();
 
-        // Handle the response
         if (request.result == UnityWebRequest.Result.Success)
         {
             string responseText = request.downloadHandler.text;
@@ -86,10 +91,12 @@ public class BackendConnectionManager : MonoBehaviour
             try
             {
                 SessionResponse response = JsonUtility.FromJson<SessionResponse>(responseText);
+
                 if (!string.IsNullOrEmpty(response.session_id))
                 {
                     currentSessionId = response.session_id;
                     currentSessionToken = response.session_token;
+
                     StartCoroutine(GetSessionMetadata(currentSessionId));
                 }
                 else
@@ -108,6 +115,10 @@ public class BackendConnectionManager : MonoBehaviour
         }
     }
 
+    // ---------------------------------------------------------
+    // FETCH SESSION METADATA (IMPORTANT UPDATE)
+    // ---------------------------------------------------------
+
     private IEnumerator GetSessionMetadata(string sessionId)
     {
         Debug.Log("Fetching metadata for session: " + sessionId + "...");
@@ -119,9 +130,29 @@ public class BackendConnectionManager : MonoBehaviour
 
         if (request.result == UnityWebRequest.Result.Success)
         {
-            Debug.Log("Metadata received: " + request.downloadHandler.text);
-            
-            // Connect to WebSocket after metadata is received
+            string responseText = request.downloadHandler.text;
+            Debug.Log("Metadata received: " + responseText);
+
+            try
+            {
+                JObject parsed = JObject.Parse(responseText);
+
+                if (parsed["scenario_metadata"] != null)
+                {
+                    SessionMetadata = parsed["scenario_metadata"] as JObject;
+                    Debug.Log("Scenario metadata stored successfully.");
+                }
+                else
+                {
+                    Debug.LogError("scenario_metadata not found in response.");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Failed to parse metadata JSON: " + e.Message);
+            }
+
+            // Connect WebSocket AFTER metadata is stored
             _ = ConnectWebSocket(currentSessionId, currentSessionToken);
         }
         else
@@ -129,6 +160,10 @@ public class BackendConnectionManager : MonoBehaviour
             Debug.LogError("Metadata fetch failed: " + request.error + " - " + request.downloadHandler.text);
         }
     }
+
+    // ---------------------------------------------------------
+    // WEBSOCKET CONNECTION
+    // ---------------------------------------------------------
 
     private async Task ConnectWebSocket(string sessionId, string sessionToken)
     {
@@ -141,7 +176,9 @@ public class BackendConnectionManager : MonoBehaviour
             Debug.Log($"Connecting to WebSocket: {fullWsUrl}");
 
             await webSocket.ConnectAsync(new Uri(fullWsUrl), cancellationToken.Token);
+
             Debug.Log("Backend connection ready.");
+
             StepFlowController.Instance.SetInitialStep();
 
             _ = ReceiveLoop();
@@ -151,6 +188,10 @@ public class BackendConnectionManager : MonoBehaviour
             Debug.LogError($"WebSocket connection error: {e.Message}");
         }
     }
+
+    // ---------------------------------------------------------
+    // SEND WEBSOCKET EVENT
+    // ---------------------------------------------------------
 
     public async Task SendEvent(string eventName, JObject data)
     {
@@ -169,14 +210,18 @@ public class BackendConnectionManager : MonoBehaviour
 
         string json = JsonConvert.SerializeObject(payload);
         byte[] bytes = Encoding.UTF8.GetBytes(json);
-        
+
         await webSocket.SendAsync(
-            new ArraySegment<byte>(bytes), 
-            WebSocketMessageType.Text, 
-            true, 
+            new ArraySegment<byte>(bytes),
+            WebSocketMessageType.Text,
+            true,
             cancellationToken.Token
         );
     }
+
+    // ---------------------------------------------------------
+    // RECEIVE LOOP
+    // ---------------------------------------------------------
 
     private async Task ReceiveLoop()
     {
@@ -193,7 +238,8 @@ public class BackendConnectionManager : MonoBehaviour
                     {
                         result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
                         ms.Write(buffer, 0, result.Count);
-                    } while (!result.EndOfMessage);
+                    }
+                    while (!result.EndOfMessage);
 
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
@@ -205,8 +251,6 @@ public class BackendConnectionManager : MonoBehaviour
                     ms.Seek(0, SeekOrigin.Begin);
                     string message = Encoding.UTF8.GetString(ms.ToArray());
 
-                    Debug.Log("Full WS message received, length: " + message.Length);
-                    
                     MainThreadDispatcher.Enqueue(() =>
                     {
                         BackendEventRouter.Route(message);
@@ -222,19 +266,24 @@ public class BackendConnectionManager : MonoBehaviour
             }
         }
     }
+
+    // ---------------------------------------------------------
+    // REST STEP COMPLETION (HISTORY ONLY)
+    // ---------------------------------------------------------
+
     public IEnumerator CompleteStep(string stepName)
     {
-        Debug.Log("Sending step completion request for: " + stepName + "...");
+        Debug.Log("Sending step completion request for: " + stepName);
 
         string url = baseUrl + "/complete-step";
-        
+
         JObject body = new JObject
         {
             ["session_id"] = currentSessionId,
             ["step"] = stepName
         };
-        string jsonBody = body.ToString();
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(body.ToString());
 
         UnityWebRequest request = new UnityWebRequest(url, "POST");
         request.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -253,16 +302,16 @@ public class BackendConnectionManager : MonoBehaviour
                 JObject response = JObject.Parse(responseText);
 
                 // Play feedback audio if present
-                if (response["feedback_audio"] != null && 
+                if (response["feedback_audio"] != null &&
                     response["feedback_audio"]["audio_base64"] != null)
                 {
                     string base64Audio = response["feedback_audio"]["audio_base64"].ToString();
+
                     if (TTSAudioManager.Instance != null)
-                    {
                         TTSAudioManager.Instance.PlayTTS(base64Audio);
-                    }
                 }
 
+                // Advance step
                 if (response["next_step"] != null)
                 {
                     string nextStep = response["next_step"].ToString();

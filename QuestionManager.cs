@@ -1,148 +1,247 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
-using System.IO;
+using Newtonsoft.Json.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using UnityEngine.Networking;
 
-/// <summary>
-/// QuestionManager — networking reset.
-/// Backend MCQ submission removed. Local question loading and UI rendering kept intact.
-/// </summary>
 public class QuestionManager : MonoBehaviour
 {
+    public static QuestionManager Instance { get; private set; }
+
     public TMP_Text questionText;
     public ToggleGroup toggleGroup;
     public List<Toggle> answerToggles;
-    public AudioSource audioSource;
-
-    private List<MCQQuestion> questions;
-
     public Button submitButton;
-    public bool isActivateStepsLogic = false; // to activate the steps logic
 
-    private int currentQuestionIndex = 0;
+    private List<JObject> questions;
+    private int currentQuestionIndex;
+    private bool isInitialized;
+    private bool isWaitingForBackend;
 
-    void Start()
+    private void Awake()
     {
-        StartCoroutine(LoadQuestions());
-        foreach (var toggle in answerToggles)
+        if (Instance == null)
         {
-            toggle.onValueChanged.AddListener((_) => PlayClickSound());
-        }
-    }
-
-    IEnumerator LoadQuestions()
-    {
-        string fileName = "questions.json";
-        string path = Path.Combine(Application.streamingAssetsPath, fileName);
-        string json = "";
-
-#if UNITY_ANDROID && !UNITY_EDITOR
-        UnityWebRequest www = UnityWebRequest.Get(path);
-        yield return www.SendWebRequest();
-
-#if UNITY_2020_1_OR_NEWER
-        if (www.result != UnityWebRequest.Result.Success)
-#else
-        if (www.isNetworkError || www.isHttpError)
-#endif
-        {
-            Debug.LogError("Failed to load JSON on Android: " + www.error);
-            yield break;
-        }
-
-        json = www.downloadHandler.text;
-#else
-        if (File.Exists(path))
-        {
-            json = File.ReadAllText(path);
+            Instance = this;
         }
         else
         {
-            Debug.LogError("JSON file not found at path: " + path);
-            yield break;
+            Destroy(gameObject);
         }
-#endif
-
-        // Parse and store questions
-        questions = new List<MCQQuestion>(JsonHelper.FromJson<MCQQuestion>(json));
-        DisplayQuestion(currentQuestionIndex);
     }
 
-    void DisplayQuestion(int index)
+    private void Update()
     {
-        if (index < 0 || index >= questions.Count)
+        if (StepFlowController.Instance == null) return;
+
+        if (StepFlowController.Instance.CurrentStep == Step.Assessment)
         {
-            Debug.Log("All questions done!");
+            if (!isInitialized)
+            {
+                InitializeAssessment();
+            }
+        }
+        else
+        {
+            if (isInitialized)
+            {
+                isInitialized = false;
+                currentQuestionIndex = 0;
+                isWaitingForBackend = false;
+                
+                // Disable UI elements
+                if (questionText != null) questionText.text = "";
+                foreach (var toggle in answerToggles)
+                {
+                    if (toggle != null) toggle.gameObject.SetActive(false);
+                }
+                if (submitButton != null) submitButton.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void InitializeAssessment()
+    {
+        if (BackendConnectionManager.Instance == null || BackendConnectionManager.Instance.SessionMetadata == null)
+        {
+            Debug.LogError("SessionMetadata not found.");
             return;
         }
 
-        MCQQuestion q = questions[index];
-        questionText.text = q.question;
-
-        for (int i = 0; i < answerToggles.Count; i++)
+        JToken assessmentQuestionsToken = BackendConnectionManager.Instance.SessionMetadata["assessment_questions"];
+        if (assessmentQuestionsToken == null)
         {
-            Toggle toggle = answerToggles[i];
-            toggle.isOn = false;
-            toggle.gameObject.SetActive(i < q.options.Length);
-            toggle.GetComponentInChildren<Text>().text = q.options[i];
+            Debug.LogError("assessment_questions not found in SessionMetadata.");
+            return;
         }
+
+        questions = new List<JObject>();
+        foreach (JToken token in assessmentQuestionsToken)
+        {
+            questions.Add(token as JObject);
+        }
+
+        currentQuestionIndex = 0;
+        isInitialized = true;
+        isWaitingForBackend = false;
+
+        DisplayQuestion(0);
+    }
+
+    private void DisplayQuestion(int index)
+    {
+        if (questions == null) return;
+
+        if (index >= questions.Count)
+        {
+            if (submitButton != null) submitButton.gameObject.SetActive(false);
+            Debug.Log("All questions answered");
+            return;
+        }
+
+        if (submitButton != null) submitButton.gameObject.SetActive(true);
+
+        JObject q = questions[index];
+        if (questionText != null)
+        {
+            questionText.text = q["question"]?.ToString();
+        }
+
+        JArray options = q["options"] as JArray;
+        if (options != null)
+        {
+            for (int i = 0; i < answerToggles.Count; i++)
+            {
+                if (i < options.Count)
+                {
+                    answerToggles[i].gameObject.SetActive(true);
+                    answerToggles[i].isOn = false;
+
+                    Text textComponent = answerToggles[i].GetComponentInChildren<Text>();
+                    if (textComponent != null)
+                    {
+                        textComponent.text = options[i].ToString();
+                    }
+                    else
+                    {
+                        TMP_Text tmpTextComponent = answerToggles[i].GetComponentInChildren<TMP_Text>();
+                        if (tmpTextComponent != null)
+                        {
+                            tmpTextComponent.text = options[i].ToString();
+                        }
+                    }
+                }
+                else
+                {
+                    answerToggles[i].gameObject.SetActive(false);
+                }
+            }
+        }
+
+        // Reset toggle selection
+        if (toggleGroup != null)
+        {
+            toggleGroup.SetAllTogglesOff();
+        }
+
+        if (submitButton != null) submitButton.interactable = true;
     }
 
     public void SubmitAnswer()
     {
-        int selectedIndex = -1;
+        if (isWaitingForBackend) return;
 
+        int selectedIndex = -1;
         for (int i = 0; i < answerToggles.Count; i++)
         {
-            if (answerToggles[i].isOn)
+            if (answerToggles[i].isOn && answerToggles[i].gameObject.activeSelf)
             {
                 selectedIndex = i;
                 break;
             }
         }
 
-        if (selectedIndex == -1)
-        {
-            Debug.Log("No answer selected");
-            return;
-        }
+        if (selectedIndex == -1) return;
 
-        if (selectedIndex == questions[currentQuestionIndex].correctOptionIndex)
+        string selectedOptionText = "";
+        
+        Text textComponent = answerToggles[selectedIndex].GetComponentInChildren<Text>();
+        if (textComponent != null)
         {
-            Debug.Log("✅ Correct Answer!");
+            selectedOptionText = textComponent.text;
         }
         else
         {
-            Debug.Log("❌ Wrong Answer!");
+            TMP_Text tmpTextComponent = answerToggles[selectedIndex].GetComponentInChildren<TMP_Text>();
+            if (tmpTextComponent != null)
+            {
+                selectedOptionText = tmpTextComponent.text;
+            }
         }
 
-        // Backend call removed - MCQ answer not sent to backend
-        Debug.Log("Backend call removed - placeholder (QuestionManager.SubmitAnswer)");
-
-        submitButton.interactable = false;
-        submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Please wait...";
-
-        currentQuestionIndex++;
-        if (currentQuestionIndex >= questions.Count)
+        if (BackendConnectionManager.Instance != null && questions != null && currentQuestionIndex < questions.Count)
         {
-            Debug.Log("Quiz Finished!");
-            isActivateStepsLogic = true;
-            submitButton.interactable = true;
-            submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Submit";
-            return;
-        }
+            _ = BackendConnectionManager.Instance.SendEvent(
+                "mcq_answer",
+                JObject.FromObject(new
+                {
+                    question_id = questions[currentQuestionIndex]["id"]?.ToString(),
+                    answer = selectedOptionText
+                })
+            );
 
-        DisplayQuestion(currentQuestionIndex);
-        submitButton.interactable = true;
-        submitButton.GetComponentInChildren<TextMeshProUGUI>().text = "Submit";
+            isWaitingForBackend = true;
+            if (submitButton != null) submitButton.interactable = false;
+        }
     }
 
-    public void PlayClickSound()
+    public void HandleAnswerResult(JObject data)
     {
-        if (audioSource != null)
-            audioSource.Play();
+        isWaitingForBackend = false;
+
+        bool isCorrect = data["is_correct"]?.Value<bool>() ?? false;
+        string explanation = data["explanation"]?.ToString();
+
+        Debug.Log($"Explanation: {explanation}");
+
+        currentQuestionIndex++;
+
+        if (currentQuestionIndex < questions.Count)
+        {
+            DisplayQuestion(currentQuestionIndex);
+        }
+        else
+        {
+            Debug.Log("All questions answered. Completing assessment.");
+            if (BackendConnectionManager.Instance != null)
+            {
+                _ = BackendConnectionManager.Instance.SendEvent(
+                    "step_complete",
+                    JObject.FromObject(new { step = "assessment" })
+                );
+            }
+        }
+    }
+
+    public void HandleAssessmentSummary(JObject data)
+    {
+        if (data == null) return;
+
+        JObject mcqResult = data["mcq_result"] as JObject;
+
+        if (mcqResult != null)
+        {
+            string totalQuestions = mcqResult["total_questions"]?.ToString();
+            string correctCount = mcqResult["correct_count"]?.ToString();
+            string score = mcqResult["score"]?.ToString();
+
+            Debug.Log($"Assessment Summary - Total: {totalQuestions}, Correct: {correctCount}, Score: {score}");
+        }
+
+        string summaryText = data["summary_text"]?.ToString();
+        Debug.Log($"Summary Text: {summaryText}");
+
+        isInitialized = false;
     }
 }
