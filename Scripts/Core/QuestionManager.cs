@@ -41,6 +41,13 @@ public class QuestionManager : MonoBehaviour
             {
                 InitializeAssessment();
             }
+
+            // NEW: Allow controller B button to finish assessment
+            if (OVRInput.GetDown(OVRInput.Button.Two))
+            {
+                Debug.Log("Controller B pressed - Completing Assessment");
+                CompleteAssessment();
+            }
         }
         else
         {
@@ -50,7 +57,6 @@ public class QuestionManager : MonoBehaviour
                 currentQuestionIndex = 0;
                 isWaitingForBackend = false;
                 
-                // Disable UI elements
                 if (questionText != null) questionText.text = "";
                 foreach (var toggle in answerToggles)
                 {
@@ -139,7 +145,6 @@ public class QuestionManager : MonoBehaviour
             }
         }
 
-        // Reset toggle selection
         if (toggleGroup != null)
         {
             toggleGroup.SetAllTogglesOff();
@@ -214,14 +219,18 @@ public class QuestionManager : MonoBehaviour
         else
         {
             Debug.Log("All questions answered. Completing assessment.");
-            if (BackendConnectionManager.Instance != null)
-            {
-                _ = BackendConnectionManager.Instance.SendEvent(
-                    "step_complete",
-                    JObject.FromObject(new { step = "assessment" })
-                );
-            }
+            CompleteAssessment();
         }
+    }
+
+    private void CompleteAssessment()
+    {
+        if (BackendConnectionManager.Instance == null) return;
+
+        BackendConnectionManager.Instance.SendEvent(
+            "step_complete",
+            JObject.FromObject(new { step = "assessment" })
+        );
     }
 
     public void HandleAssessmentSummary(JObject data)

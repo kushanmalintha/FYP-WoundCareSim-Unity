@@ -130,6 +130,22 @@ public static class BackendEventRouter
                 }
                 break;
 
+            case "real_time_feedback":
+                Debug.Log("REAL TIME FEEDBACK RECEIVED");
+
+                if (data != null)
+                {
+                    string status = data["status"]?.ToString();
+                    string message = data["message"]?.ToString();
+                    int total = data["total_actions_so_far"]?.Value<int>() ?? 0;
+
+                    Debug.Log("Status: " + status);
+                    Debug.Log("Message: " + message);
+                    Debug.Log("Total Actions: " + total);
+                }
+
+                break;
+
             case "session_end":
                 Debug.Log("Session End Received");
                 break;
