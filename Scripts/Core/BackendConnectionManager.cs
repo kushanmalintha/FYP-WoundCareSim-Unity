@@ -24,8 +24,8 @@ public class BackendConnectionManager : MonoBehaviour
 
     private const string studentId = "student_001";
     private const string scenarioId = "scenario_001";
-    private const string baseUrl = "http://192.168.8.153:8000/session";
-    private const string wsUrl = "ws://192.168.8.153:8000/ws/session";
+    private const string baseUrl = "http://10.199.90.189:8000/session";
+    private const string wsUrl = "ws://10.199.90.189:8000/ws/session";
 
     private ClientWebSocket webSocket;
     private CancellationTokenSource cancellationToken;
