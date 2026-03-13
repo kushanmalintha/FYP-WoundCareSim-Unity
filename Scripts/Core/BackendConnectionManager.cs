@@ -21,10 +21,11 @@ public class SessionResponse
 public class BackendConnectionManager : MonoBehaviour
 {
     public static BackendConnectionManager Instance;
+    public const string IP = "192.168.8.100";
 
-    private const string baseUrl = "http://192.168.137.1:8000/session";
-    private const string activeSessionUrl = "http://192.168.137.1:8000/session/active";
-    private const string wsUrl = "ws://192.168.137.1:8000/ws/session";
+    private string baseUrl => $"http://{IP}:8000/session";
+    private string activeSessionUrl => $"http://{IP}:8000/session/active";
+    private string wsUrl => $"ws://{IP}:8000/ws/session";
 
     private ClientWebSocket webSocket;
     private CancellationTokenSource cancellationToken;
